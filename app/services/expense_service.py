@@ -4,7 +4,8 @@ from app.models.expense import Expense
 from app.schemas.expense import ExpenseCreate
 from app.schemas.expense_filter import ExpenseFilter
 from datetime import datetime
-from sqlalchemy import text
+from sqlalchemy import text, Numeric
+from decimal import Decimal
 
 class ExpenseService:
     @staticmethod
@@ -24,7 +25,7 @@ class ExpenseService:
             db_expense = Expense(
                 user_id=expense.user_id,
                 description=expense.description,
-                amount=str(expense.amount),  # Convert float to string to ensure proper numeric casting
+                amount=Decimal(str(expense.amount)),  # Convert to Decimal for exact precision
                 category=expense.category,
                 added_at=datetime.utcnow()  # Explicitly set the timestamp
             )
