@@ -20,21 +20,36 @@ class ExpenseService:
             The created expense or None if creation failed
         """
         db = SessionLocal()
-        print(expense)
         try:
-            # Format amount as currency string for PostgreSQL money type
-            formatted_amount = f"${expense.amount:.2f}"
-            db_expense = Expense(
-                user_id=expense.user_id,
-                description=expense.description,
-                amount=formatted_amount,  # PostgreSQL money type expects a string with currency symbol
-                category=expense.category,
-                added_at=datetime.utcnow()  # Explicitly set the timestamp
+            # Use raw SQL to properly handle money type
+            sql = text("""
+                INSERT INTO expenses (user_id, description, amount, category, added_at)
+                VALUES (:user_id, :description, :amount::money, :category, :added_at)
+                RETURNING *
+            """)
+            result = db.execute(
+                sql,
+                {
+                    'user_id': expense.user_id,
+                    'description': expense.description,
+                    'amount': str(expense.amount),  # Convert float to string for casting
+                    'category': expense.category,
+                    'added_at': datetime.utcnow()
+                }
             )
-            db.add(db_expense)
             db.commit()
-            db.refresh(db_expense)
-            return db_expense
+            # Convert the result to an Expense model instance
+            row = result.fetchone()
+            if row:
+                return Expense(
+                    id=row.id,
+                    user_id=row.user_id,
+                    description=row.description,
+                    amount=row.amount,
+                    category=row.category,
+                    added_at=row.added_at
+                )
+            return None
         except Exception as e:
             db.rollback()
             print(e)
