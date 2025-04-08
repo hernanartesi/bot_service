@@ -9,6 +9,13 @@ from decimal import Decimal
 
 class ExpenseService:
     @staticmethod
+    def _parse_money_amount(amount_str: str) -> float:
+        """Convert a money string to float by removing currency symbol and parsing."""
+        if isinstance(amount_str, (int, float)):
+            return float(amount_str)
+        return float(amount_str.replace('$', '').replace(',', ''))
+
+    @staticmethod
     def create_expense(expense: ExpenseCreate) -> Optional[Expense]:
         """
         Create a new expense in the database.
@@ -41,11 +48,13 @@ class ExpenseService:
             # Convert the result to an Expense model instance
             row = result.fetchone()
             if row:
+                # Parse the money amount back to float
+                amount = ExpenseService._parse_money_amount(row.amount)
                 return Expense(
                     id=row.id,
                     user_id=row.user_id,
                     description=row.description,
-                    amount=row.amount,
+                    amount=amount,  # Use the parsed float value
                     category=row.category,
                     added_at=row.added_at
                 )
