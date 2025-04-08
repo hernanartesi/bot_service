@@ -4,14 +4,19 @@ from app.core.config import settings
 from app.services.expense_category_service import ExpenseCategoryService
 from app.services.expense_service import ExpenseService
 from app.schemas.expense import ExpenseCreate
+import json
 
 class AIService:
     def __init__(self):
-        self.llm = ChatOpenAI(
-            api_key=settings.OPENAI_API_KEY,
-            model_name=settings.OPENAI_MODEL_NAME,
-            temperature=settings.OPENAI_TEMPERATURE
-        )
+        try:
+            self.llm = ChatOpenAI(
+                api_key=settings.OPENAI_API_KEY,
+                model_name=settings.OPENAI_MODEL_NAME,
+                temperature=settings.OPENAI_TEMPERATURE
+            )
+        except Exception as e:
+            print(f"Error initializing ChatOpenAI: {e}")
+            raise
     
     async def process_message(self, message: str, user_id: int) -> dict:
         """
@@ -24,30 +29,51 @@ class AIService:
             
         Returns:
             A dictionary with the saved expense data or error information
-        """ 
+        """
         try:
             # Analyze the message
             print("Analyzing message: ", message)
             categories = ExpenseCategoryService.get_categories_as_string()
-            print(categories)
+            print("Available categories:", categories)
             
             system_message = SystemMessage(content=(
                 "You are an assistant that extracts structured expense data from user messages. "
                 "Given a message like 'Bought coffee for 4.5 dollars', extract and return a JSON object "
                 "with the fields: amount (number), category (string), and description (string).\n\n"
-                f"Categories: {categories}. "
-                "If the message cannot be analyzed as an expense, set category to 'unknown'. But only if you can't extract an expense, otherwise use a category from the list. "
-                "Respond only with the JSON structure."
+                f"Available categories are: {categories}\n"
+                "If the message cannot be analyzed as an expense, set category to 'unknown'. "
+                "But only if you can't extract an expense, otherwise use a category from the list above. "
+                "Respond only with the JSON structure, for example:\n"
+                '{"amount": 4.5, "category": "Food", "description": "Bought coffee"}'
             ))
             
             human_message = HumanMessage(content=message)
             
-            response = self.llm.invoke([system_message, human_message])
-            import json
-            result = json.loads(response.content)
+            try:
+                response = self.llm.invoke([system_message, human_message])
+                print("OpenAI response:", response.content)
+                result = json.loads(response.content)
+            except json.JSONDecodeError as e:
+                print(f"Error parsing JSON response: {e}")
+                print("Raw response:", response.content)
+                return {
+                    'amount': 0,
+                    'category': 'unknown',
+                    'description': message,
+                    'error': 'Could not parse AI response'
+                }
+            except Exception as e:
+                print(f"Error calling OpenAI: {e}")
+                return {
+                    'amount': 0,
+                    'category': 'unknown',
+                    'description': message,
+                    'error': str(e)
+                }
             
             # Ensure the result has the expected structure
             if not isinstance(result, dict) or not all(key in result for key in ['amount', 'category', 'description']):
+                print("Invalid response structure:", result)
                 return {
                     'amount': 0,
                     'category': 'unknown',
@@ -55,32 +81,45 @@ class AIService:
                     'error': 'Could not analyze message as expense'
                 }
             
-            # Create and save the expense
-            expense_data = ExpenseCreate(
-                user_id=user_id,
-                description=result['description'],
-                amount=float(result['amount']),
-                category=result['category']
-            )
+            # Validate category
+            if result['category'] not in categories.split(", ") and result['category'] != 'unknown':
+                print(f"Invalid category: {result['category']}")
+                result['category'] = 'Other'
             
-            saved_expense = ExpenseService.create_expense(expense_data)
-            if not saved_expense:
+            # Create and save the expense
+            try:
+                expense_data = ExpenseCreate(
+                    user_id=user_id,
+                    description=result['description'],
+                    amount=float(result['amount']),
+                    category=result['category']
+                )
+                
+                saved_expense = ExpenseService.create_expense(expense_data)
+                if not saved_expense:
+                    return {
+                        'amount': 0,
+                        'category': 'unknown',
+                        'description': message,
+                        'error': 'Failed to save expense'
+                    }
+                
+                return {
+                    'amount': float(saved_expense.amount),
+                    'category': saved_expense.category,
+                    'description': saved_expense.description
+                }
+            except Exception as e:
+                print(f"Error saving expense: {e}")
                 return {
                     'amount': 0,
                     'category': 'unknown',
                     'description': message,
-                    'error': 'Failed to save expense'
+                    'error': f'Failed to save expense: {str(e)}'
                 }
-            
-            return {
-                'id': saved_expense.id,
-                'amount': float(saved_expense.amount),
-                'category': saved_expense.category,
-                'description': saved_expense.description,
-                'added_at': saved_expense.added_at
-            }
+                
         except Exception as e:
-            # Return unknown structure in case of any error
+            print(f"Unexpected error in process_message: {e}")
             return {
                 'amount': 0,
                 'category': 'unknown',

@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     
     # OpenAI Settings
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
-    OPENAI_MODEL_NAME: str = "gpt-4o-mini"
+    OPENAI_MODEL_NAME: str = "gpt-3.5-turbo"
     OPENAI_TEMPERATURE: float = 0.7
 
     # Database Settings
