@@ -27,7 +27,9 @@ class AIService:
         """ 
         try:
             # Analyze the message
+            print("Analyzing message: ", message)
             categories = ExpenseCategoryService.get_categories_as_string()
+            print(categories)
             messages = [
                 SystemMessage(content=(
                     "You are an assistant that extracts structured expense data from user messages. "
