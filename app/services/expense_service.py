@@ -24,7 +24,7 @@ class ExpenseService:
             db_expense = Expense(
                 user_id=expense.user_id,
                 description=expense.description,
-                amount=expense.amount,
+                amount=str(expense.amount),  # Convert float to string to ensure proper numeric casting
                 category=expense.category,
                 added_at=datetime.utcnow()  # Explicitly set the timestamp
             )
