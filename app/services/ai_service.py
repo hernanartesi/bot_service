@@ -4,6 +4,7 @@ from app.core.config import settings
 from app.services.expense_category_service import ExpenseCategoryService
 from app.services.expense_service import ExpenseService
 from app.schemas.expense import ExpenseCreate
+from langchain.schema import SystemMessage, HumanMessage
 import json
 
 class AIService:
@@ -37,24 +38,19 @@ class AIService:
             print("Available categories:", categories)
             
             messages = [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are an assistant that extracts structured expense data from user messages. "
-                        "Given a message like 'Bought coffee for 4.5 dollars', extract and return a JSON object "
-                        "with the fields: amount (number), category (string), and description (string).\n\n"
-                        f"Available categories are: {categories}\n"
-                        "If the message cannot be analyzed as an expense, set category to 'unknown'. "
-                        "But only if you can't extract an expense, otherwise use a category from the list above. "
-                        "Respond only with the JSON structure, for example:\n"
-                        '{"amount": 4.5, "category": "Food", "description": "Bought coffee"}'
-                    )
-                },
-                {
-                    "role": "user",
-                    "content": message
-                }
+                SystemMessage(content=(
+                    "You are an assistant that extracts structured expense data from user messages. "
+                    "Given a message like 'Bought coffee for 4.5 dollars', extract and return a JSON object "
+                    "with the fields: amount (number), category (string), and description (string).\n\n"
+                    f"Available categories are: {categories}\n"
+                    "If the message cannot be analyzed as an expense, set category to 'unknown'. "
+                    "But only if you can't extract an expense, otherwise use a category from the list above. "
+                    "Respond only with the JSON structure, for example:\n"
+                    '{"amount": 4.5, "category": "Food", "description": "Bought coffee"}'
+                )),
+                HumanMessage(content=message)
             ]
+
             
             try:
                 response = self.llm.invoke(messages)
