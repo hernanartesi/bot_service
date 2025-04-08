@@ -35,7 +35,6 @@ class AIService:
             # Analyze the message
             print("Analyzing message: ", message)
             categories = ExpenseCategoryService.get_categories_as_string()
-            print("Available categories:", categories)
             
             messages = [
                 SystemMessage(content=(
@@ -55,7 +54,6 @@ class AIService:
             
             try:
                 response = self.llm.invoke(messages)
-                print("OpenAI response:", response.content)
                 result = json.loads(response.content)
             except json.JSONDecodeError as e:
                 print(f"Error parsing JSON response: {e}")
@@ -91,7 +89,6 @@ class AIService:
                 result['category'] = 'Other'
             
             # Create and save the expense
-            print(result)
             try:
                 expense_data = ExpenseCreate(
                     user_id=user_id,

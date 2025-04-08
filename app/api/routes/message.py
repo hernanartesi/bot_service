@@ -33,7 +33,6 @@ async def analyze_message(
         raise HTTPException(status_code=400, detail="Message cannot be empty")
     
     # Get structured response
-    print("Analyzing message: ", request.message)
     response = await ai_service.process_message(request.message, request.user_id)
     
     if "error" in response:

@@ -22,10 +22,12 @@ class ExpenseService:
         db = SessionLocal()
         print(expense)
         try:
+            # Format amount as currency string for PostgreSQL money type
+            formatted_amount = f"${expense.amount:.2f}"
             db_expense = Expense(
                 user_id=expense.user_id,
                 description=expense.description,
-                amount=Decimal(str(expense.amount)),  # Convert to Decimal for exact precision
+                amount=formatted_amount,  # PostgreSQL money type expects a string with currency symbol
                 category=expense.category,
                 added_at=datetime.utcnow()  # Explicitly set the timestamp
             )
