@@ -1,5 +1,5 @@
 from langchain_openai import ChatOpenAI
-from langchain.schema.messages import HumanMessage, SystemMessage
+from langchain.schema.messages import HumanMessage, SystemMessage, AIMessage
 from app.core.config import settings
 from app.services.expense_category_service import ExpenseCategoryService
 from app.services.expense_service import ExpenseService
@@ -36,21 +36,28 @@ class AIService:
             categories = ExpenseCategoryService.get_categories_as_string()
             print("Available categories:", categories)
             
-            system_message = SystemMessage(content=(
-                "You are an assistant that extracts structured expense data from user messages. "
-                "Given a message like 'Bought coffee for 4.5 dollars', extract and return a JSON object "
-                "with the fields: amount (number), category (string), and description (string).\n\n"
-                f"Available categories are: {categories}\n"
-                "If the message cannot be analyzed as an expense, set category to 'unknown'. "
-                "But only if you can't extract an expense, otherwise use a category from the list above. "
-                "Respond only with the JSON structure, for example:\n"
-                '{"amount": 4.5, "category": "Food", "description": "Bought coffee"}'
-            ))
-            
-            human_message = HumanMessage(content=message)
+            messages = [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an assistant that extracts structured expense data from user messages. "
+                        "Given a message like 'Bought coffee for 4.5 dollars', extract and return a JSON object "
+                        "with the fields: amount (number), category (string), and description (string).\n\n"
+                        f"Available categories are: {categories}\n"
+                        "If the message cannot be analyzed as an expense, set category to 'unknown'. "
+                        "But only if you can't extract an expense, otherwise use a category from the list above. "
+                        "Respond only with the JSON structure, for example:\n"
+                        '{"amount": 4.5, "category": "Food", "description": "Bought coffee"}'
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": message
+                }
+            ]
             
             try:
-                response = self.llm.invoke([system_message, human_message])
+                response = self.llm.invoke(messages)
                 print("OpenAI response:", response.content)
                 result = json.loads(response.content)
             except json.JSONDecodeError as e:
