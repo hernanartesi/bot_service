@@ -1,5 +1,5 @@
 from langchain_openai import ChatOpenAI
-from langchain.schema import HumanMessage, SystemMessage
+from langchain.schema.messages import HumanMessage, SystemMessage
 from app.core.config import settings
 from app.services.expense_category_service import ExpenseCategoryService
 from app.services.expense_service import ExpenseService
@@ -30,18 +30,19 @@ class AIService:
             print("Analyzing message: ", message)
             categories = ExpenseCategoryService.get_categories_as_string()
             print(categories)
-            messages = [
-                SystemMessage(content=(
-                    "You are an assistant that extracts structured expense data from user messages. "
-                    "Given a message like 'Bought coffee for 4.5 dollars', extract and return a JSON object "
-                    "with the fields: amount (number), category (string), and description (string).\n\n"
-                    f"Categories: {categories}. "
-                    "If the message cannot be analyzed as an expense, set category to 'unknown'. But only if you can't extract an expense, otherwise use a category from the list. "
-                    "Respond only with the JSON structure."
-                )),
-                HumanMessage(content=message)
-            ]
-            response = self.llm.invoke(messages)
+            
+            system_message = SystemMessage(content=(
+                "You are an assistant that extracts structured expense data from user messages. "
+                "Given a message like 'Bought coffee for 4.5 dollars', extract and return a JSON object "
+                "with the fields: amount (number), category (string), and description (string).\n\n"
+                f"Categories: {categories}. "
+                "If the message cannot be analyzed as an expense, set category to 'unknown'. But only if you can't extract an expense, otherwise use a category from the list. "
+                "Respond only with the JSON structure."
+            ))
+            
+            human_message = HumanMessage(content=message)
+            
+            response = self.llm.invoke([system_message, human_message])
             import json
             result = json.loads(response.content)
             
