@@ -4,7 +4,7 @@ from app.core.config import settings
 from app.services.expense_category_service import ExpenseCategoryService
 from app.services.expense_service import ExpenseService
 from app.schemas.expense import ExpenseCreate
-from langchain.schema import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage
 import json
 
 class AIService:
@@ -49,7 +49,8 @@ class AIService:
                     '{"amount": 4.5, "category": "Food", "description": "Bought coffee"}'
                 )),
                 HumanMessage(content=message)
-            ]
+]
+
 
             
             try:
