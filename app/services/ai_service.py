@@ -91,6 +91,7 @@ class AIService:
                 result['category'] = 'Other'
             
             # Create and save the expense
+            print(result)
             try:
                 expense_data = ExpenseCreate(
                     user_id=user_id,
