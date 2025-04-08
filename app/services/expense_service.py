@@ -24,7 +24,7 @@ class ExpenseService:
             # Use raw SQL to properly handle money type
             sql = text("""
                 INSERT INTO expenses (user_id, description, amount, category, added_at)
-                VALUES (:user_id, :description, :amount::money, :category, :added_at)
+                VALUES (:user_id, :description, CAST(:amount AS money), :category, :added_at)
                 RETURNING *
             """)
             result = db.execute(
