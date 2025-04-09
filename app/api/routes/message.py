@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional 
@@ -32,10 +31,26 @@ async def analyze_message(
     if not request.message or request.message.strip() == "":
         raise HTTPException(status_code=400, detail="Message cannot be empty")
     
-    # Get structured response
-    response = await ai_service.process_message(request.message, request.user_id)
-    
-    if "error" in response:
-        raise HTTPException(status_code=500, detail=response["error"])
-    
-    return MessageResponse(**response)
+    try:
+        # Get structured response
+        response = await ai_service.process_message(request.message, request.user_id)
+        
+        # Check if response is None
+        if response is None:
+            return MessageResponse(
+                type="error",
+                data=None,
+                error="An unexpected error occurred while processing your message"
+            )
+            
+        # The response is already a MessageResponse object, so return it directly
+        return response
+    except Exception as e:
+        # Log the exception
+        print(f"Error in analyze_message: {str(e)}")
+        # Return a fallback MessageResponse
+        return MessageResponse(
+            type="error",
+            data=None,
+            error=f"An error occurred: {str(e)}"
+        )

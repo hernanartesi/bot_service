@@ -24,7 +24,10 @@ class ExpenseService:
         """Convert a money string to float by removing currency symbol and parsing."""
         if isinstance(amount_str, (int, float)):
             return float(amount_str)
-        return float(amount_str.replace('$', '').replace(',', ''))
+        if isinstance(amount_str, str):
+            return float(amount_str.replace('$', '').replace(',', ''))
+        # If it's already a Decimal, just convert to float
+        return float(amount_str)
 
     @staticmethod
     def create_expense(expense: ExpenseCreate) -> Optional[Expense]:
@@ -137,4 +140,49 @@ class ExpenseService:
             where_clause = filters.to_sql_where_clause()
             if where_clause != "1=1":
                 base_query += f" AND {where_clause}"
-        return base_query 
+        return base_query
+
+    @staticmethod
+    def execute_expenses_query(user_id: int, filters: Optional[ExpenseFilter] = None) -> List[Expense]:
+        """
+        Execute the SQL query and return the results as Expense objects.
+        
+        Args:
+            user_id: The ID of the user
+            filters: Optional filters to apply
+            
+        Returns:
+            List of expenses matching the query
+        """
+        with ExpenseService.get_db_session() as db:
+            try:
+                # Set READ COMMITTED for consistent reads
+                db.execute(text("SET TRANSACTION ISOLATION LEVEL READ COMMITTED"))
+                
+                # Get the SQL query
+                sql_query = ExpenseService.get_expenses_sql(user_id, filters)
+                
+                # Execute the query
+                result = db.execute(text(sql_query))
+                
+                # Convert results to Expense objects
+                expenses = []
+                for row in result:
+                    amount = ExpenseService._parse_money_amount(row.amount)
+                    expense = Expense(
+                        id=row.id,
+                        user_id=row.user_id,
+                        description=row.description,
+                        amount=amount,
+                        category=row.category,
+                        added_at=row.added_at
+                    )
+                    expenses.append(expense)
+                
+                return expenses
+            except SQLAlchemyError as e:
+                print(f"Database error: {str(e)}")
+                return []
+            except Exception as e:
+                print(f"Unexpected error: {str(e)}")
+                return [] 
